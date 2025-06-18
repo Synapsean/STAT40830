@@ -242,9 +242,8 @@ ggplot(first_records, aes(x= Country_Name, y=Count_Indicators))+
   geom_bar(stat = 'identity', fill= 'forestgreen', width = 0.5)+
   labs(title = "Number of Indicators measured in the first recorded year (1960)",
        x= 'Country',
-       y= 'Number of indicators measures')+
+       y= 'Number of indicators measures')+ 
   theme_minimal() +
-  coord_flip() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
