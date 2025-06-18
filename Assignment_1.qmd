@@ -1,0 +1,379 @@
+---
+title: "Assignment 1"
+subtitle: "An Analysis of World Bank Indicators in Colombia, Spain, and Ireland"
+author: Sean Quinlan
+format: 
+  revealjs: 
+    theme: simple 
+    header-includes:
+      - <link href="assignment_1.css" rel="stylesheet">
+scrollable: true
+engine: knitr
+---
+
+## Introduction
+
+For this assignment, I used the World Bank - Economic, Social, Environmental, Health, Education, Development and Energy data from [Colombia](https://data.humdata.org/dataset/world-bank-combined-indicators-for-colombia), [Spain](https://data.humdata.org/dataset/world-bank-combined-indicators-for-spain) and [Ireland](https://data.humdata.org/dataset/world-bank-combined-indicators-for-ireland)
+
+::: {layout="[1,1,1]"}
+![Colombia](Flag_of_Colombia.png)
+
+![Spain](Spain_flag.png)
+
+![Ireland](Ireland_flag.png)
+:::
+
+## Initial coding
+
+-   Installed packages I planned to use
+
+-   Read in the 3 data-set from COL, ESP and IRL using data.table::fread()
+
+-   Edited the column names to remove any spaces for clarity
+
+-   Merged the data tables using rbind
+
+-   Changed the "Value" and "Year" columns from characters, to numeric
+
+-   Removed first row from each data-set after they were merged (#country+name row) Change1
+
+```{r}
+usethis::git_sitrep()
+usethis::use_git_config(
+  user.name- "Synapsean",
+  user.email- "sean.quinlan@ucd.ie"
+)
+usethis::create_github_token()
+```
+
+```{r}
+#| label: Instal packages
+#| output: false
+#| eval: true
+#| warning: false
+library(skimr)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(summarytools)
+library(tidytable)
+```
+
+```{r}
+#|label: Read in data.tables from Colombia, Spain and Ireland
+#|eval: true
+dt_COL = data.table::fread("indicators_col.csv")
+dt_ESP = data.table::fread("indicators_esp.csv")
+dt_IRL = data.table::fread("indicators_irl.csv")
+```
+
+```{r}
+#|label: Changed column names to remove spaces
+
+setnames(dt_COL, c("Country Name", "Country ISO3", "Year", "Indicator Name", "Indicator Code", "Value"), c("Country_Name", "Country_ISO3", "Year", "Indicator_Name", "Indicator_Code", "Value"), skip_absent=TRUE)
+
+setnames(dt_ESP, c("Country Name", "Country ISO3", "Year", "Indicator Name", "Indicator Code", "Value"), c("Country_Name", "Country_ISO3", "Year", "Indicator_Name", "Indicator_Code", "Value"), skip_absent=TRUE)
+
+setnames(dt_IRL, c("Country Name", "Country ISO3", "Year", "Indicator Name", "Indicator Code", "Value"), c("Country_Name", "Country_ISO3", "Year", "Indicator_Name", "Indicator_Code", "Value"), skip_absent=TRUE)
+```
+
+```{r}
+#|label: Merged data tabled with rbind 
+all_country_data <- rbind(dt_COL, dt_ESP, dt_IRL)
+```
+
+```{r}
+# Changed the variable class of "Value" and "Year" from characters to numerical, removed any missing data points
+all_country_data =all_country_data[,Value := as.numeric(Value)][, Year := as.numeric(Year)]
+```
+
+```{r}
+#Removed inital
+all_country_data <- all_country_data[-1,]
+```
+
+## World Bank Data
+
+-   The world bank began collecting data from Colombia (COL), Spain (ESP) and Ireland (IRL) in 1960
+
+-   These data cover the period from 1st Jan 1960 until 31st Dec 2024
+
+-   The data is hosted on the [Humanitarian Data Exchange (HDX)](https://data.humdata.org/) and is managed by the Centre for Humanitarian Data from the United Nations Secretariat, OCHA.
+
+## Country's Summary
+
+:::::: columns
+::: {.column width="33%"}
+### Colombia
+
+-   Population: 52,321,152
+
+-   Landmass: South America
+
+-   Land area: 1,109,500 km^2^
+:::
+
+::: {.column width="33%"}
+### España
+
+-   Population: 48,347,910
+
+-   Landmass: Europe
+
+-   Land area: 499,713 km^2^
+:::
+
+::: {.column width="33%"}
+### Éire
+
+-   Population: 5,307,600
+
+-   Landmass: Europe
+
+-   Land area: 68,890
+:::
+::::::
+
+## Summary cont.
+
+This initial code was used to check the population data from the first and last recorded year, and plotted using ggplot:geom_bar. I performed a series of filters, first to filter the Indicator_Name, followed by the years I was interested in (1960 and 2023) and last the country names. I created a new column of Year_Factor to plot the data later.
+
+```{r}
+#| label: population summary from '60 to '23
+#| echo: true
+#| code-fold: true
+#| output: false
+
+population_data = unique(all_country_data[ #Unique was used as there was 2 inputs of the same data for each country
+  # Filter by Indicator_Name
+  Indicator_Name == 'Population, total'
+][
+  # Further filter by Year
+  Year %in% c(1960, 2023)
+][
+  # Further filter by Country_Name
+  Country_Name %in% c('Colombia', 'Spain', 'Ireland'),
+  # Select desired columns and create Year_Factor in one step
+  .(Country_Name, Indicator_Name, Year, Value, Year_Factor = as.factor(Year))
+],
+by = c("Country_Name", "Year_Factor"))
+population_data[, Year_Factor := as.factor(Year)]
+print(population_data)
+
+
+```
+
+Population growth of each country over the recording period. The population of all 3 countries has increased over this period, particularly Colombia, which has increased from \~15M to 52M people. Ireland has increased from 2.8M to 5.3M people, and Spain has increased from 30M to 48M people.
+
+```{r}
+#| echo: true
+#| code-fold: true
+#| fig-width: 6
+#| fig-height: 4
+#| fig-align: center 
+ggplot(population_data, aes(x = Year_Factor, y = Value, fill = Year_Factor)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  facet_wrap(~ Country_Name, scales = "free_y", ncol = 3) +
+  labs(
+    title = "Total Population by Country (1960 vs. 2023)",
+    x = "Year",
+    y = "Population",
+    fill = "Year"
+  ) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold")
+  )
+
+```
+
+## Obtaining Unique Indicators
+
+Here I made a list of all unique Indicators that were measured across the three countries, we see that almost 4000 indicators are measured in the combined data-set. I subsetted all rows \[i\], identifying unique Indicator_Names \[j\] and printing the vector with each. This would be necessary to identify which indicators would be interesting to look at later.
+
+```{r}
+#| label: Unique_Indicators
+#| echo: true # Show the R code
+#| results: markup # Default for vectors, but good to be explicit
+#| code-fold: true
+#| wrap: true
+#| out-width: "90%"
+
+# Get all unique Country_Name values
+unique_Indicators = all_country_data[, unique(Indicator_Name)]
+
+# Print the resulting vector to display on the slide
+unique_Indicators
+```
+
+## Data collection
+
+These data began to be collected in 1960 for all three countries.
+
+In Colombia, 537 different indicators were measured in the first year, while in Spain- 470 and in Ireland-460 indicators were initially collected. Here I created a new object by filtering all rows to identify the minimum year recorded by each country and what the unique indicators were. I then counted these as a list and plotted as a bar graph.
+
+```{r}
+#| label: bar-plot
+#| echo: true
+#| fig-width: 6
+#| fig-height: 4 
+#| code-fold: true
+#| wrap: true
+#| out-width: "90%"
+#| fig-align: center
+first_recorded_year = all_country_data[, min(Year), by = Country_Name]
+setnames(first_recorded_year, "V1", "Min_Year")
+initial_records =
+  all_country_data[, {
+    min_country_year = min(Year, na.rm = TRUE)
+    # Filter within the group to get rows for the min year, then count unique indicators
+    .(Count_Indicators = uniqueN(Indicator_Name[Year == min_country_year]))
+  }, by = Country_Name]
+
+initial_records <- initial_records[!grepl("#country\\+name", Country_Name)]
+
+first_records = first_recorded_year[initial_records, on=.(Country_Name=Country_Name)]
+#print(initial_records)
+
+ggplot(first_records, aes(x= Country_Name, y=Count_Indicators))+
+  geom_bar(stat = 'identity', fill= 'forestgreen', width = 0.5)+
+  labs(title = "Number of Indicators measured in the first recorded year (1960)",
+       x= 'Country',
+       y= 'Number of indicators measures')+
+  theme_minimal() +
+  coord_flip() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Data Summary
+
+-   I next used 2 packages to summarise the data, to get an overall sense of what the data looked like
+
+    -   Skim
+
+    -   SummaryTools
+
+        Skim while useful in some data-sets, didn't give a good breakdown of the data, SummaryTools was a little more helpful. While it states in the Country_Name and Country_Code that #countryname and #countrycode are present, I removed them above.
+
+## Summary stats using Skim
+
+```{r}
+#|echo: false 
+#|results: asis 
+skim(all_country_data)
+```
+
+## SummaryTools stats on Data
+
+In my code on my QMD file, the first value for Country_Name and Country_ISO3 are not present, but when I render it, they are.
+
+For much of these data I didnt see the value/insight of performing specific operations on indicators, but rather looked at trends over time, or between countries.
+
+```{r}
+#|label: Summary statistics using summarytools for all_country datase
+#|echo: false 
+#|results: asis 
+library(summarytools) 
+dfSummary(all_country_data, style = "grid", valid.col = FALSE, na.col = FALSE, graph.col = FALSE)
+
+```
+
+## GDP as an initial comparison
+
+-   GDP = Gross Domestic Product
+
+-   GDP is often used a benchmark value to indicate how well or how poorly a particular economy is doing.
+
+-   Here I took the indicator "GDP (current US\$) and looked at it over time for all three countries.
+
+-   As there were too many data points (60+ years) to plot them individually, I grouped them into 5-year bins, taking the mean GDP for that period.
+
+-   
+
+## GDP of Colombia, Spain and Ireland from 1960 - 2023
+
+```{r}
+#|label: GDP summary of 3 countries 
+#|echo: true
+#|code-fold: true
+#|fig-align: center 
+
+# Filter data for Indicator "GDP(current US$)" 
+GDP_indicator = "GDP (current US$)"
+GDP_data = all_country_data%>% 
+  filter(Indicator_Name == GDP_indicator) %>%
+  arrange(Country_Name, Year)
+
+# Data is averaged over 5 years and placed into bins
+min_year = min(GDP_data$Year, na.rm = TRUE) #Identify the first year of data collection
+bin_size= 5
+gdp_binned_data = GDP_data %>%
+  mutate(Year_Bin_Start = floor((Year - min_year) / 5) * 5 + min_year) %>% #create bins of 5 years starting from the first year
+  group_by(Country_Name, Year_Bin_Start) %>%
+  summarise(
+   Mean_GDP_Bin = mean(Value, na.rm = TRUE),
+    .groups = 'drop' # Ungroup after summarising
+  ) %>% 
+  mutate(Year_Bin_Label = paste0(Year_Bin_Start, "-", Year_Bin_Start + 4)) %>% #Create the correct labels for each bin
+  arrange(Country_Name, Year_Bin_Start)
+
+# Stacked bar plot showing the GDP growth for 5 year bins, in each country
+ggplot(data= gdp_binned_data, aes(x= Year_Bin_Label, y=Mean_GDP_Bin/1e9)) +
+  geom_bar(stat = "identity", fill= "forestgreen") +
+  facet_wrap(~ Country_Name, scales = "free_y", ncol = 1)+
+  labs(
+    title = paste0("Mean GDP (US$) in ", bin_size, "-Year Bins"),
+    x = paste0(bin_size, "-Year Period"),
+    y = "Mean GDP (Billions USD)"
+    ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size= 8), # Rotate x-axis labels for readability
+    plot.title = element_text(hjust = 0.5, face = "bold") # Center and bold the title
+  ) 
+
+  
+
+```
+
+## Childhood mortality rates
+
+I next wanted to look at the rate of childhood mortality in each country, Indicator_Name = "Mortality rate, under-5 (per 1,000 live births)" and to see in which years this rate was above 5 per 1000 births. This is commonly used as a benchmark for good post-natal and childhood care.
+
+I created a new data table and filtered the data to see in which Year this operation would be true. I created a new column to count the years for where this is true combining the := argument and length function and created a horizontal bar plot.
+
+```{r}
+#|label: Filtering of neonatal mortality data
+#|echo: true
+#|code-fold: true
+neonatal_mortality <- all_country_data[
+  Indicator_Name == "Mortality rate, under-5 (per 1,000 live births)" & Value > 5, # i: Filter rows
+  list(year_mortality_above5 = unique(Year)),                       # j: Select and format columns
+  by = Country_Name                                              # by: Group by country
+]
+
+print(neonatal_mortality)
+```
+
+## Number of years since records began of childhood mortality greater than 5/1000
+
+```{r}
+#|label: Graph showing the number of years where the incidence of chilhood mortality was greater than 5/1000
+#|echo: true 
+#|code-fold: true
+#|wrap: true
+#|out-width: "90%"
+#|fig-align: center
+neonatal_mortality[, num_years_present := sapply(year_mortality_above5, length)]
+ggplot(neonatal_mortality, aes(x = reorder(Country_Name, num_years_present), y = num_years_present)) +
+  geom_col(fill = "forestgreen") +
+  labs(
+    title = "Number of Years with Under-5 Mortality Rate Above 5",
+    x = "Country",
+    y = "Number of Years"
+  ) +
+  theme_minimal() +
+  coord_flip() 
+```
