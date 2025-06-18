@@ -239,7 +239,7 @@ first_records = first_recorded_year[initial_records, on=.(Country_Name=Country_N
 #print(initial_records)
 
 ggplot(first_records, aes(x= Country_Name, y=Count_Indicators))+
-  geom_bar(stat = 'identity', fill= 'forestgreen', width = 0.5)+
+  geom_bar(stat = 'identity', fill= 'grey', width = 0.5)+
   labs(title = "Number of Indicators measured in the first recorded year (1960)",
        x= 'Country',
        y= 'Number of indicators measures')+ 
